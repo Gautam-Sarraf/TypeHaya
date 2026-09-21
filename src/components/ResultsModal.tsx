@@ -51,10 +51,14 @@ export function ResultsModal({
     }
   }, [isPersonalBest]);
 
-  // Keyboard shortcut listener for results screen (Tab+Enter or Enter to restart)
+  // Keyboard shortcut listener for results screen (Tab+Enter, Enter, or Cmd/Ctrl+Enter to restart)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Enter" || (e.key === "Tab" && !e.shiftKey)) {
+      if (
+        e.key === "Enter" ||
+        ((e.metaKey || e.ctrlKey) && e.key === "Enter") ||
+        (e.key === "Tab" && !e.shiftKey)
+      ) {
         e.preventDefault();
         onNextTest();
       }

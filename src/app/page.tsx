@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Header } from "@/components/Header";
 import { ConfigBar } from "@/components/ConfigBar";
 import { TypingArea } from "@/components/TypingArea";
@@ -40,6 +40,20 @@ export default function HomePage() {
 
   // Failure message (for Master/Sudden Death difficulties)
   const [failReason, setFailReason] = useState<string | null>(null);
+
+  // Restart primed state (for Tab + Enter or visual indicator)
+  const [isRestartPrimed, setIsRestartPrimed] = useState(false);
+  const restartPrimedTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const tabKeyDownRef = useRef<boolean>(false);
+
+  const cancelRestartPrimed = useCallback(() => {
+    setIsRestartPrimed(false);
+    tabKeyDownRef.current = false;
+    if (restartPrimedTimerRef.current) {
+      clearTimeout(restartPrimedTimerRef.current);
+      restartPrimedTimerRef.current = null;
+    }
+  }, []);
 
   // Generate target words based on mode
   const wordsToType = useMemo(() => {
@@ -198,6 +212,7 @@ export default function HomePage() {
 
   // Restart handlers
   const handleNextTest = useCallback(() => {
+    cancelRestartPrimed();
     setCompletedStats(null);
     setFailReason(null);
     setIsPersonalBest(false);
@@ -215,17 +230,19 @@ export default function HomePage() {
       const fresh = generateWords(wordCount, { language, punctuation, numbers });
       resetTest(fresh);
     }
-  }, [mode, subMode, language, punctuation, numbers, resetTest]);
+  }, [mode, subMode, language, punctuation, numbers, resetTest, cancelRestartPrimed]);
 
   const handleRepeatTest = useCallback(() => {
+    cancelRestartPrimed();
     setCompletedStats(null);
     setFailReason(null);
     setIsPersonalBest(false);
     resetTest();
-  }, [resetTest]);
+  }, [resetTest, cancelRestartPrimed]);
 
   // Practice missed words drill
   const handlePracticeMissed = useCallback(() => {
+    cancelRestartPrimed();
     if (!completedStats) return;
     const errorKeys = Object.keys(completedStats.keyErrors);
     if (errorKeys.length === 0) return;
@@ -239,28 +256,89 @@ export default function HomePage() {
     setCompletedStats(null);
     setFailReason(null);
     resetTest(drillWords);
-  }, [completedStats, wordsToType, resetTest]);
+  }, [completedStats, wordsToType, resetTest, cancelRestartPrimed]);
 
   // Global Quick-Restart & Command Palette listener
   useEffect(() => {
-    const handleGlobalKeys = (e: KeyboardEvent) => {
-      // Open command palette with Esc or Cmd+K
-      if ((e.key === "Escape" || (e.key === "k" && (e.metaKey || e.ctrlKey))) && !isCommandPaletteOpen) {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // 1. Command Palette: Cmd/Ctrl + K
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setIsCommandPaletteOpen(true);
+        setIsCommandPaletteOpen((prev) => !prev);
         return;
       }
 
-      // Quick restart via Tab + Enter or Tab
+      // 2. Cmd + Enter or Ctrl + Enter: Instant restart alias (convenient for Mac/PC users)
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        handleNextTest();
+        return;
+      }
+
+      // 3. Quick restart: "esc" mode
+      if (e.key === "Escape") {
+        if (settings.quickRestart === "esc") {
+          e.preventDefault();
+          handleNextTest();
+          return;
+        }
+        if (!isCommandPaletteOpen) {
+          e.preventDefault();
+          setIsCommandPaletteOpen(true);
+          return;
+        }
+      }
+
+      // 4. Quick restart: "tab" mode (instant restart on Tab)
       if (e.key === "Tab" && settings.quickRestart === "tab") {
         e.preventDefault();
         handleNextTest();
+        return;
+      }
+
+      // 5. Quick restart: "tabEnter" mode (Tab primes, Enter executes; or holding Tab + pressing Enter)
+      if (settings.quickRestart === "tabEnter") {
+        if (e.key === "Tab") {
+          e.preventDefault();
+          tabKeyDownRef.current = true;
+          setIsRestartPrimed(true);
+
+          if (restartPrimedTimerRef.current) {
+            clearTimeout(restartPrimedTimerRef.current);
+          }
+          // Prime for 2 seconds
+          restartPrimedTimerRef.current = setTimeout(() => {
+            setIsRestartPrimed(false);
+          }, 2000);
+          return;
+        }
+
+        if (e.key === "Enter") {
+          if (tabKeyDownRef.current || isRestartPrimed) {
+            e.preventDefault();
+            handleNextTest();
+            return;
+          }
+        }
       }
     };
 
-    window.addEventListener("keydown", handleGlobalKeys);
-    return () => window.removeEventListener("keydown", handleGlobalKeys);
-  }, [isCommandPaletteOpen, settings.quickRestart, handleNextTest]);
+    const handleGlobalKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Tab") {
+        tabKeyDownRef.current = false;
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    window.addEventListener("keyup", handleGlobalKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown);
+      window.removeEventListener("keyup", handleGlobalKeyUp);
+      if (restartPrimedTimerRef.current) {
+        clearTimeout(restartPrimedTimerRef.current);
+      }
+    };
+  }, [isCommandPaletteOpen, settings.quickRestart, handleNextTest, isRestartPrimed]);
 
   return (
     <main
@@ -345,6 +423,7 @@ export default function HomePage() {
               subMode={subMode}
               quoteAuthor={currentQuote?.author}
               quoteSource={currentQuote?.source}
+              isRestartPrimed={isRestartPrimed}
               onKeyDown={handleKeyDown}
               onRestart={handleNextTest}
             />

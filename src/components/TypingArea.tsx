@@ -19,6 +19,7 @@ interface TypingAreaProps {
   subMode: string;
   quoteAuthor?: string;
   quoteSource?: string;
+  isRestartPrimed?: boolean;
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onRestart: () => void;
 }
@@ -37,6 +38,7 @@ export function TypingArea({
   subMode,
   quoteAuthor,
   quoteSource,
+  isRestartPrimed = false,
   onKeyDown,
   onRestart,
 }: TypingAreaProps) {
@@ -280,7 +282,12 @@ export function TypingArea({
         <input
           ref={inputRef}
           type="text"
-          onKeyDown={onKeyDown}
+          onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              e.preventDefault();
+            }
+            onKeyDown(e);
+          }}
           onBlur={() => setIsFocused(false)}
           onFocus={() => setIsFocused(true)}
           autoCapitalize="none"
@@ -397,20 +404,33 @@ export function TypingArea({
       <div className="mt-8 flex flex-col items-center gap-2">
         <button
           onClick={onRestart}
-          className="p-3 rounded-xl transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 group opacity-60 hover:opacity-100"
+          className={`p-3 rounded-xl transition-all duration-200 cursor-pointer group ${
+            isRestartPrimed
+              ? "scale-125 opacity-100 ring-2 shadow-lg"
+              : "hover:scale-110 active:scale-95 opacity-60 hover:opacity-100"
+          }`}
           style={{
-            backgroundColor: "transparent",
-            color: "var(--sub-color)",
+            backgroundColor: isRestartPrimed ? "var(--sub-alt-color)" : "transparent",
+            color: isRestartPrimed ? "var(--main-color)" : "var(--sub-color)",
+            boxShadow: isRestartPrimed ? "0 0 15px rgba(226, 183, 20, 0.3)" : undefined,
           }}
-          title="Restart Test (Tab + Enter)"
+          title="Restart Test (Tab + Enter or Cmd + Enter)"
         >
-          <RotateCcw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
+          <RotateCcw
+            className={`w-5 h-5 ${
+              isRestartPrimed ? "rotate-180 text-[var(--main-color)]" : "group-hover:rotate-180"
+            } transition-transform duration-500`}
+          />
         </button>
         <span
-          className="text-[11px] tracking-wider font-semibold opacity-40 uppercase"
-          style={{ color: "var(--sub-color)" }}
+          className={`text-[11px] tracking-wider font-semibold uppercase transition-all duration-200 ${
+            isRestartPrimed ? "opacity-100 font-bold scale-105" : "opacity-40"
+          }`}
+          style={{ color: isRestartPrimed ? "var(--main-color)" : "var(--sub-color)" }}
         >
-          {settings.quickRestart === "tabEnter"
+          {isRestartPrimed
+            ? "press enter to restart"
+            : settings.quickRestart === "tabEnter"
             ? "tab + enter to restart"
             : settings.quickRestart === "tab"
             ? "tab to restart"
