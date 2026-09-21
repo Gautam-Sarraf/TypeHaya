@@ -1,26 +1,98 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --bg-color: #323437;
+  --main-color: #e2b714;
+  --caret-color: #e2b714;
+  --sub-color: #646669;
+  --sub-alt-color: #2c2e31;
+  --text-color: #d1d0c5;
+  --error-color: #ca4754;
+  --error-extra-color: #7e2a33;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--sub-alt-color);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sub-color);
+}
+
+/* Caret Animations */
+@keyframes caretBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes caretPulse {
+  0%, 100% { opacity: 1; transform: scaleY(1); }
+  50% { opacity: 0.3; transform: scaleY(0.85); }
+}
+
+.caret-anim-blink {
+  animation: caretBlink 1s infinite steps(1);
+}
+
+.caret-anim-pulse {
+  animation: caretPulse 1.2s infinite ease-in-out;
+}
+
+.caret-anim-smooth {
+  transition: left 0.08s cubic-bezier(0.2, 0.9, 0.3, 1), top 0.08s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+/* Character States in Typing Container */
+.char-untyped {
+  color: var(--sub-color);
+  transition: color 0.05s ease;
+}
+
+.char-correct {
+  color: var(--text-color);
+  transition: color 0.05s ease;
+}
+
+.char-incorrect {
+  color: var(--error-color);
+  border-bottom: 2px solid var(--error-color);
+  transition: color 0.05s ease;
+}
+
+.char-extra {
+  color: var(--error-extra-color);
+  opacity: 0.85;
+}
+
+.char-missed {
+  color: var(--error-color);
+  opacity: 0.5;
+  text-decoration: underline wavy;
+}
+
+
+
+/* Capsule Buttons and Inputs */
+button:focus, a:focus {
+  outline: none;
 }

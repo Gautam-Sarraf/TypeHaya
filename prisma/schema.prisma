@@ -1,0 +1,83 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  username     String         @unique
+  passwordHash String
+  avatar       String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  results      TestResult[]
+  personalBests PersonalBest[]
+  settings     UserSettings?
+}
+
+model TestResult {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wpm         Float
+  rawWpm      Float
+  accuracy    Float
+  consistency Float
+  mode        String
+  subMode     String
+  language    String   @default("english")
+  punctuation Boolean  @default(false)
+  numbers     Boolean  @default(false)
+  duration    Float
+  charStats   Json
+  wpmTimeline Json?
+  keyStats    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([mode, subMode])
+  @@index([wpm])
+}
+
+model PersonalBest {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode         String
+  subMode      String
+  wpm          Float
+  rawWpm       Float
+  accuracy     Float
+  testResultId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, mode, subMode])
+  @@index([mode, subMode, wpm])
+}
+
+model UserSettings {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme             String   @default("serika_dark")
+  fontFamily        String   @default("JetBrains Mono")
+  caretStyle        String   @default("line")
+  caretAnimation    String   @default("smooth")
+  soundPreset       String   @default("off")
+  soundVolume       Float    @default(0.5)
+  quickRestart      String   @default("tabEnter")
+  blindMode         Boolean  @default(false)
+  confidenceMode    Boolean  @default(false)
+  showLiveWpm       Boolean  @default(true)
+  showLiveAcc       Boolean  @default(true)
+  showTimer         Boolean  @default(true)
+  showKeyVisualizer Boolean  @default(false)
+  smoothLineScroll  Boolean  @default(true)
+  paceCaret         String   @default("off")
+  updatedAt         DateTime @updatedAt
+}

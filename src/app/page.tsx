@@ -1,69 +1,425 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { Header } from "@/components/Header";
+import { ConfigBar } from "@/components/ConfigBar";
+import { TypingArea } from "@/components/TypingArea";
+import { ResultsModal } from "@/components/ResultsModal";
+import { VirtualKeyboard } from "@/components/VirtualKeyboard";
+import { CommandPalette } from "@/components/CommandPalette";
+import { Footer } from "@/components/Footer";
+import { useTypingEngine } from "@/hooks/useTypingEngine";
+import { useSettings } from "@/context/SettingsContext";
+import { TestMode, EngineStats } from "@/lib/engine";
+import { WordListType, generateWords } from "@/lib/words";
+import { getRandomQuote, Quote } from "@/lib/quotes";
+
+export default function HomePage() {
+  const { settings } = useSettings();
+
+  // Test Configuration State
+  const [mode, setMode] = useState<TestMode>("time");
+  const [subMode, setSubMode] = useState("30");
+  const [punctuation, setPunctuation] = useState(false);
+  const [numbers, setNumbers] = useState(false);
+  const [language, setLanguage] = useState<WordListType>("english");
+
+  // Custom text modal state
+  const [customText, setCustomText] = useState("");
+  const [showCustomModal, setShowCustomModal] = useState(false);
+
+  // Active Quote information
+  const [currentQuote, setCurrentQuote] = useState<Quote | null>(null);
+
+  // Saved Results and Personal Best flag
+  const [completedStats, setCompletedStats] = useState<EngineStats | null>(null);
+  const [isPersonalBest, setIsPersonalBest] = useState(false);
+
+  // Command palette state
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Failure message (for Master/Sudden Death difficulties)
+  const [failReason, setFailReason] = useState<string | null>(null);
+
+  // Generate target words based on mode
+  const wordsToType = useMemo(() => {
+    if (mode === "quote") {
+      const q = getRandomQuote(
+        subMode === "all" ? "all" : (subMode as "short" | "medium" | "long" | "thicc")
+      );
+      return q.text.split(" ");
+    }
+
+    if (mode === "custom") {
+      const trimmed = customText.trim();
+      return trimmed ? trimmed.split(/\s+/) : ["the", "quick", "brown", "fox", "jumps"];
+    }
+
+    let wordCount = 50;
+    if (mode === "words") {
+      wordCount = parseInt(subMode, 10) || 25;
+    } else if (mode === "time") {
+      // Provide generous pool of words so user doesn't run out
+      const sec = parseInt(subMode, 10) || 30;
+      wordCount = Math.max(50, Math.ceil(sec * 3.5));
+    } else if (mode === "zen") {
+      wordCount = 200;
+    }
+
+    return generateWords(wordCount, {
+      language,
+      punctuation,
+      numbers,
+    });
+  }, [mode, subMode, punctuation, numbers, language, customText]);
+
+  // Handle test completion
+  const handleTestComplete = useCallback(
+    async (stats: EngineStats) => {
+      setCompletedStats(stats);
+
+      // Save locally for guest history
+      try {
+        const guestHistoryStr = localStorage.getItem("typehaya_guest_history");
+        const history = guestHistoryStr ? JSON.parse(guestHistoryStr) : [];
+        const resultRecord = {
+          ...stats,
+          mode,
+          subMode,
+          language,
+          punctuation,
+          numbers,
+          createdAt: new Date().toISOString(),
+        };
+        history.unshift(resultRecord);
+        localStorage.setItem(
+          "typehaya_guest_history",
+          JSON.stringify(history.slice(0, 50))
+        );
+
+        // Check local guest personal best
+        const pbKey = `typehaya_pb_${mode}_${subMode}`;
+        const prevPb = parseFloat(localStorage.getItem(pbKey) || "0");
+        if (stats.wpm > prevPb) {
+          setIsPersonalBest(true);
+          localStorage.setItem(pbKey, stats.wpm.toString());
+        } else {
+          setIsPersonalBest(false);
+        }
+      } catch {
+        // Local storage full or private browsing
+      }
+
+      // Record to PostgreSQL database via API
+      try {
+        const res = await fetch("/api/results", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            wpm: stats.wpm,
+            rawWpm: stats.rawWpm,
+            accuracy: stats.accuracy,
+            consistency: stats.consistency,
+            mode,
+            subMode,
+            language,
+            punctuation,
+            numbers,
+            duration: stats.durationSeconds,
+            charStats: {
+              correct: stats.correctChars,
+              incorrect: stats.incorrectChars,
+              extra: stats.extraChars,
+              missed: stats.missedChars,
+            },
+            wpmTimeline: stats.timeline,
+            keyStats: stats.keyErrors,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.isPersonalBest) {
+            setIsPersonalBest(true);
+          }
+        }
+      } catch {
+        // Backend offline fallback handled cleanly
+      }
+    },
+    [mode, subMode, language, punctuation, numbers]
+  );
+
+  const handleTestFail = useCallback((reason: string) => {
+    setFailReason(reason);
+  }, []);
+
+  // Initialize Typing Engine
+  const {
+    words,
+    currentWordIndex,
+    currentCharIndex,
+    status,
+    timeLeft,
+    elapsedSeconds,
+    liveWpm,
+    liveAccuracy,
+    paceCharIndex,
+    handleKeyDown,
+    resetTest,
+  } = useTypingEngine({
+    initialWords: wordsToType,
+    mode,
+    subMode,
+    difficulty: "normal",
+    blindMode: settings.blindMode,
+    confidenceMode: settings.confidenceMode,
+    soundPreset: settings.isMuted ? "off" : settings.soundPreset,
+    soundVolume: settings.soundVolume,
+    isMuted: settings.isMuted,
+    paceWpm: settings.paceCaret === "pb" ? 75 : parseInt(settings.paceCaret, 10) || 0,
+    onComplete: handleTestComplete,
+    onFail: handleTestFail,
+  });
+
+  // Track quote details
+  useEffect(() => {
+    if (mode === "quote") {
+      const q = getRandomQuote(
+        subMode === "all" ? "all" : (subMode as "short" | "medium" | "long" | "thicc")
+      );
+      setCurrentQuote(q);
+      resetTest(q.text.split(" "));
+    } else {
+      setCurrentQuote(null);
+      resetTest(wordsToType);
+    }
+  }, [mode, subMode, punctuation, numbers, language]);
+
+  // Restart handlers
+  const handleNextTest = useCallback(() => {
+    setCompletedStats(null);
+    setFailReason(null);
+    setIsPersonalBest(false);
+
+    if (mode === "quote") {
+      const q = getRandomQuote(
+        subMode === "all" ? "all" : (subMode as "short" | "medium" | "long" | "thicc")
+      );
+      setCurrentQuote(q);
+      resetTest(q.text.split(" "));
+    } else {
+      let wordCount = 50;
+      if (mode === "words") wordCount = parseInt(subMode, 10) || 25;
+      else if (mode === "time") wordCount = Math.max(50, Math.ceil((parseInt(subMode, 10) || 30) * 3.5));
+      const fresh = generateWords(wordCount, { language, punctuation, numbers });
+      resetTest(fresh);
+    }
+  }, [mode, subMode, language, punctuation, numbers, resetTest]);
+
+  const handleRepeatTest = useCallback(() => {
+    setCompletedStats(null);
+    setFailReason(null);
+    setIsPersonalBest(false);
+    resetTest();
+  }, [resetTest]);
+
+  // Practice missed words drill
+  const handlePracticeMissed = useCallback(() => {
+    if (!completedStats) return;
+    const errorKeys = Object.keys(completedStats.keyErrors);
+    if (errorKeys.length === 0) return;
+
+    // Filter words that contain any of the error keys
+    const missedWordList = wordsToType.filter((w) =>
+      errorKeys.some((k) => w.toLowerCase().includes(k.toLowerCase()))
+    );
+
+    const drillWords = missedWordList.length > 0 ? missedWordList : wordsToType.slice(0, 10);
+    setCompletedStats(null);
+    setFailReason(null);
+    resetTest(drillWords);
+  }, [completedStats, wordsToType, resetTest]);
+
+  // Global Quick-Restart & Command Palette listener
+  useEffect(() => {
+    const handleGlobalKeys = (e: KeyboardEvent) => {
+      // Open command palette with Esc or Cmd+K
+      if ((e.key === "Escape" || (e.key === "k" && (e.metaKey || e.ctrlKey))) && !isCommandPaletteOpen) {
+        e.preventDefault();
+        setIsCommandPaletteOpen(true);
+        return;
+      }
+
+      // Quick restart via Tab + Enter or Tab
+      if (e.key === "Tab" && settings.quickRestart === "tab") {
+        e.preventDefault();
+        handleNextTest();
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeys);
+    return () => window.removeEventListener("keydown", handleGlobalKeys);
+  }, [isCommandPaletteOpen, settings.quickRestart, handleNextTest]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <main
+      className="min-h-screen flex flex-col justify-between selection:bg-yellow-500/20 transition-colors duration-200"
+      style={{ backgroundColor: "var(--bg-color)" }}
+    >
+      {/* Header */}
+      <Header />
+
+      {/* Main Workspace */}
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl mx-auto px-4 py-6">
+        {completedStats ? (
+          /* Results View */
+          <ResultsModal
+            stats={completedStats}
+            mode={mode}
+            subMode={subMode}
+            language={language}
+            isPersonalBest={isPersonalBest}
+            onNextTest={handleNextTest}
+            onRepeatTest={handleRepeatTest}
+            onPracticeMissed={handlePracticeMissed}
+          />
+        ) : (
+          /* Active Typing View */
+          <div className="w-full flex flex-col items-center gap-8">
+            {/* Fail Notification (if Sudden Death failed) */}
+            {failReason && (
+              <div
+                className="py-2 px-4 rounded-xl text-xs font-bold shadow-md animate-shake flex items-center gap-2"
+                style={{
+                  backgroundColor: "var(--error-color)",
+                  color: "#ffffff",
+                }}
+              >
+                <span>{failReason}</span>
+                <button
+                  onClick={handleNextTest}
+                  className="underline cursor-pointer ml-2"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+
+            {/* Test Configuration Bar (fades out while typing to minimize distraction) */}
+            <div
+              className={`transition-opacity duration-300 ${
+                status === "running" ? "opacity-0 pointer-events-none" : "opacity-100"
+              }`}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+              <ConfigBar
+                mode={mode}
+                subMode={subMode}
+                punctuation={punctuation}
+                numbers={numbers}
+                language={language}
+                onModeChange={(newMode, defaultSub) => {
+                  setMode(newMode);
+                  setSubMode(defaultSub);
+                  if (newMode === "custom") setShowCustomModal(true);
+                }}
+                onSubModeChange={(sub) => setSubMode(sub)}
+                onTogglePunctuation={() => setPunctuation((prev) => !prev)}
+                onToggleNumbers={() => setNumbers((prev) => !prev)}
+                onLanguageChange={(lang) => setLanguage(lang)}
+              />
+            </div>
+
+            {/* Typing Engine Area */}
+            <TypingArea
+              words={words}
+              currentWordIndex={currentWordIndex}
+              currentCharIndex={currentCharIndex}
+              status={status}
+              timeLeft={timeLeft}
+              elapsedSeconds={elapsedSeconds}
+              liveWpm={liveWpm}
+              liveAccuracy={liveAccuracy}
+              paceCharIndex={paceCharIndex}
+              mode={mode}
+              subMode={subMode}
+              quoteAuthor={currentQuote?.author}
+              quoteSource={currentQuote?.source}
+              onKeyDown={handleKeyDown}
+              onRestart={handleNextTest}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+            {/* Optional Virtual Keyboard */}
+            {settings.showKeyVisualizer && <VirtualKeyboard />}
+          </div>
+        )}
+      </div>
+
+      {/* Custom Text Modal */}
+      {showCustomModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
+        >
+          <div
+            className="w-full max-w-lg p-6 rounded-2xl shadow-2xl flex flex-col gap-4 border"
+            style={{
+              backgroundColor: "var(--bg-color)",
+              borderColor: "var(--sub-alt-color)",
+              color: "var(--text-color)",
+            }}
           >
-            Documentation
-          </a>
+            <h3 className="text-lg font-bold">Custom Text Test</h3>
+            <textarea
+              value={customText}
+              onChange={(e) => setCustomText(e.target.value)}
+              placeholder="Paste or type your custom text here..."
+              rows={6}
+              className="w-full p-3 rounded-xl font-mono text-sm border outline-none resize-none"
+              style={{
+                backgroundColor: "var(--sub-alt-color)",
+                borderColor: "transparent",
+                color: "var(--text-color)",
+              }}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowCustomModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+                style={{ color: "var(--sub-color)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowCustomModal(false);
+                  resetTest(customText.trim().split(/\s+/));
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer"
+                style={{
+                  backgroundColor: "var(--main-color)",
+                  color: "var(--bg-color)",
+                }}
+              >
+                Apply Text
+              </button>
+            </div>
+          </div>
         </div>
-      </main>
-    </div>
+      )}
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onSelectMode={(m) => {
+          setMode(m);
+          setSubMode(m === "time" ? "30" : m === "words" ? "25" : "medium");
+        }}
+      />
+
+      {/* Footer */}
+      <Footer onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
+    </main>
   );
 }

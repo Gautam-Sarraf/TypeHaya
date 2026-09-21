@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Typehaya ⌨️
+
+A modern, fast, minimalist typing speed platform inspired by Monkeytype. Built with Next.js 15, TypeScript, Tailwind CSS, Prisma ORM, and PostgreSQL.
+
+---
+
+## Features
+
+- **High-Performance Typing Engine**: Character-level state machine (`untyped`, `correct`, `incorrect`, `extra`, `missed`, `active`) with zero-latency keystroke rendering and smooth caret positioning.
+- **Multiple Test Modes**:
+  - **Time**: 15s, 30s, 60s, 120s
+  - **Words**: 10, 25, 50, 100 words
+  - **Quote**: Categorized quotes (Short, Medium, Long, Thicc) with author citations
+  - **Zen**: Unconstrained free typing
+  - **Custom**: Custom text and drills
+- **Rich Analytics**: Real-time Net WPM, Raw WPM, Accuracy %, Consistency %, typo heatmaps, and interactive SVG timeline performance charts.
+- **16 Mechanical Keyboard Themes**: Instant real-time CSS variable switching across Serika Dark, Dracula, Cyberpunk, Nord, Carbon, Botanical, Chalk, 8008, Gruvbox, and more.
+- **Audio Feedback**: Procedural Web Audio API sound synthesizer with zero latency (Cherry MX Blue, Cherry MX Brown, Pop, Typewriter) and quick top-left mute toggle.
+- **Database & Accounts**: PostgreSQL with Prisma ORM. Full guest support with automatic local-to-account synchronization upon registration/login.
+
+---
+
+## Tech Stack
+
+- **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Database & ORM**: [PostgreSQL](https://www.postgresql.org/) with [Prisma 7](https://www.prisma.io/)
+- **Audio**: Web Audio API (procedural synthesis)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Charts**: [Recharts](https://recharts.org/)
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment
+
+Copy `.env.example` or create `.env`:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/typehaya_db?schema=public"
+JWT_SECRET="your-secure-jwt-secret"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+### 3. Initialize Database
+
+```bash
+npx prisma db push
+```
+
+### 4. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Production Build
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+npm start
+```
