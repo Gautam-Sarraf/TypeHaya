@@ -1,6 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+interface LeaderboardPB {
+  userId: string;
+  user: {
+    id: string;
+    username: string;
+    avatar: string | null;
+  };
+  wpm: number;
+  rawWpm: number;
+  accuracy: number;
+  updatedAt: Date;
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -29,7 +42,7 @@ export async function GET(req: Request) {
       },
     });
 
-    const leaderboard = pbs.map((pb, index) => ({
+    const leaderboard = (pbs as unknown as LeaderboardPB[]).map((pb: LeaderboardPB, index: number) => ({
       rank: index + 1,
       userId: pb.userId,
       username: pb.user.username,
