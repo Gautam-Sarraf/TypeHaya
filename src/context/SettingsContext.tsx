@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   showTimer: true,
   showKeyVisualizer: false,
   fontFamily: "JetBrains Mono",
-  fontSize: 28,
+  fontSize: 30,
   paceCaret: "off",
 };
 

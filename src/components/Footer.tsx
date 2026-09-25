@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Command, Palette, Volume2 } from "lucide-react";
+import { Command, Palette, Volume2, Sparkles } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { useSettings } from "@/context/SettingsContext";
 
@@ -15,28 +15,29 @@ export function Footer({ onOpenCommandPalette }: FooterProps) {
   const { settings } = useSettings();
 
   return (
-    <footer className="w-full max-w-6xl mx-auto px-6 py-6 mt-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono select-none opacity-70 hover:opacity-100 transition-opacity">
+    <footer className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 mt-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono select-none transition-all">
       {/* Keybind hints */}
-      <div className="flex flex-wrap items-center gap-4 text-[11px]" style={{ color: "var(--sub-color)" }}>
+      <div className="flex flex-wrap items-center gap-3 text-[11px]" style={{ color: "var(--sub-color)" }}>
         <button
           onClick={onOpenCommandPalette}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer hover:opacity-100"
-          style={{ backgroundColor: "var(--sub-alt-color)", color: "var(--text-color)" }}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl cursor-pointer hud-pill shadow-xs"
+          style={{ color: "var(--text-color)" }}
           title="Open Command Palette"
         >
-          <Command className="w-3 h-3" />
-          <span>esc / cmd+k</span>
-          <span className="opacity-60 text-[10px]">— commands</span>
+          <Command className="w-3.5 h-3.5" style={{ color: "var(--main-color)" }} />
+          <span>cmd+k / esc</span>
+          <span className="opacity-50 text-[10px]">— command palette</span>
         </button>
 
-        <div className="flex items-center gap-1.5">
-          <span
-            className="px-1.5 py-0.5 rounded font-bold"
-            style={{ backgroundColor: "var(--sub-alt-color)", color: "var(--text-color)" }}
-          >
-            tab + enter
-          </span>
-          <span>restart</span>
+        <div className="hidden sm:flex items-center gap-1.5 opacity-60">
+          <kbd className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/20 border border-white/5">
+            tab
+          </kbd>
+          <span>+</span>
+          <kbd className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/20 border border-white/5">
+            enter
+          </kbd>
+          <span className="text-[10px]">restart</span>
         </div>
       </div>
 
@@ -44,24 +45,24 @@ export function Footer({ onOpenCommandPalette }: FooterProps) {
       <div className="flex items-center gap-4 text-[11px]" style={{ color: "var(--sub-color)" }}>
         <button
           onClick={onOpenCommandPalette}
-          className="flex items-center gap-1.5 cursor-pointer hover:underline"
+          className="flex items-center gap-1.5 cursor-pointer hover:opacity-100 transition-opacity"
           title="Change Theme"
         >
           <Palette className="w-3.5 h-3.5" style={{ color: "var(--main-color)" }} />
-          <span>{theme.name}</span>
+          <span className="font-semibold" style={{ color: "var(--text-color)" }}>{theme.name}</span>
         </button>
 
-        <span className="flex items-center gap-1">
-          <Volume2 className="w-3.5 h-3.5" />
-          <span>{settings.soundPreset.replace("_", " ")}</span>
+        <span className="flex items-center gap-1.5">
+          <Volume2 className="w-3.5 h-3.5 opacity-60" />
+          <span className="capitalize">{settings.soundPreset.replace("_", " ")}</span>
         </span>
 
-        <div className="w-[1px] h-3.5" style={{ backgroundColor: "var(--sub-color)", opacity: 0.3 }} />
+        <div className="w-[1px] h-3.5 bg-white/10" />
 
-        <Link href="/about" className="hover:underline">
+        <Link href="/about" className="hover:opacity-100 opacity-70 transition-opacity">
           about
         </Link>
-        <Link href="/settings" className="hover:underline">
+        <Link href="/settings" className="hover:opacity-100 opacity-70 transition-opacity">
           settings
         </Link>
       </div>

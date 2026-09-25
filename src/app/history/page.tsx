@@ -43,7 +43,6 @@ export default function HistoryPage() {
         setHistory([]);
       }
     } else {
-      // Guest local history
       try {
         const guestData = localStorage.getItem("typehaya_guest_history");
         if (guestData) {
@@ -70,35 +69,41 @@ export default function HistoryPage() {
     >
       <Header />
 
-      <div className="flex-1 w-full max-w-5xl mx-auto px-6 py-8">
+      <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {/* Title */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <HistoryIcon className="w-6 h-6" style={{ color: "var(--main-color)" }} />
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg"
+              style={{
+                backgroundColor: "color-mix(in srgb, var(--main-color) 15%, transparent)",
+                color: "var(--main-color)",
+                border: "1px solid color-mix(in srgb, var(--main-color) 30%, transparent)",
+              }}
+            >
+              <HistoryIcon className="w-5 h-5" />
+            </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Test History</h1>
-              <p className="text-xs font-mono opacity-60" style={{ color: "var(--sub-color)" }}>
-                {user ? `Logged in as ${user.username}` : "Viewing guest session history"}
+              <h1 className="text-3xl font-extrabold tracking-tight font-display">Session Flight Log</h1>
+              <p className="text-xs font-mono opacity-60 mt-0.5" style={{ color: "var(--sub-color)" }}>
+                {user ? `Authenticated profile: ${user.username}` : "Local guest memory stream"}
               </p>
             </div>
           </div>
 
           {/* Filter Pills */}
-          <div
-            className="flex items-center gap-1 p-1 rounded-xl"
-            style={{ backgroundColor: "var(--sub-alt-color)" }}
-          >
+          <div className="flex items-center gap-1 p-1.5 rounded-2xl hud-glass shadow-lg">
             <Filter className="w-3.5 h-3.5 mx-2 opacity-50" style={{ color: "var(--sub-color)" }} />
             {["all", "time", "words", "quote"].map((m) => (
               <button
                 key={m}
                 onClick={() => setFilterMode(m)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize cursor-pointer transition-colors ${
-                  filterMode === m ? "font-bold" : "opacity-60"
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-semibold capitalize cursor-pointer transition-all ${
+                  filterMode === m ? "font-bold shadow-xs" : "opacity-60 hover:opacity-100"
                 }`}
                 style={{
-                  backgroundColor: filterMode === m ? "var(--bg-color)" : "transparent",
-                  color: filterMode === m ? "var(--main-color)" : "var(--sub-color)",
+                  backgroundColor: filterMode === m ? "var(--main-color)" : "transparent",
+                  color: filterMode === m ? "var(--bg-color)" : "var(--sub-color)",
                 }}
               >
                 {m}
@@ -107,50 +112,44 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {/* History Table */}
-        <div
-          className="w-full rounded-2xl overflow-hidden shadow-md border"
-          style={{
-            backgroundColor: "var(--sub-alt-color)",
-            borderColor: "transparent",
-          }}
-        >
+        {/* History Table Card */}
+        <div className="w-full rounded-3xl overflow-hidden hud-glass shadow-2xl border border-white/5">
           <div className="overflow-x-auto">
             <table className="w-full text-left font-mono text-xs">
               <thead>
-                <tr className="border-b" style={{ borderColor: "var(--bg-color)", color: "var(--sub-color)" }}>
-                  <th className="py-3.5 px-6 font-bold uppercase text-[11px]">WPM</th>
-                  <th className="py-3.5 px-6 font-bold uppercase text-[11px]">Raw</th>
-                  <th className="py-3.5 px-6 font-bold uppercase text-[11px]">Accuracy</th>
-                  <th className="py-3.5 px-6 font-bold uppercase text-[11px]">Consistency</th>
-                  <th className="py-3.5 px-6 font-bold uppercase text-[11px]">Mode</th>
-                  <th className="py-3.5 px-6 font-bold uppercase text-[11px] text-right">Date</th>
+                <tr className="border-b border-white/10 bg-black/20" style={{ color: "var(--sub-color)" }}>
+                  <th className="py-4 px-6 font-bold uppercase text-[11px]">Net WPM</th>
+                  <th className="py-4 px-6 font-bold uppercase text-[11px]">Raw</th>
+                  <th className="py-4 px-6 font-bold uppercase text-[11px]">Accuracy</th>
+                  <th className="py-4 px-6 font-bold uppercase text-[11px]">Consistency</th>
+                  <th className="py-4 px-6 font-bold uppercase text-[11px]">Configuration</th>
+                  <th className="py-4 px-6 font-bold uppercase text-[11px] text-right">Timestamp</th>
                 </tr>
               </thead>
-              <tbody className="divide-y" style={{ borderColor: "var(--bg-color)" }}>
+              <tbody className="divide-y divide-white/5">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center opacity-60">
-                      Loading history...
+                    <td colSpan={6} className="py-16 text-center opacity-60 font-mono">
+                      Querying flight records...
                     </td>
                   </tr>
                 ) : history.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center opacity-50">
-                      No tests found in history. Take a test on the homepage to start recording!
+                    <td colSpan={6} className="py-16 text-center opacity-50 font-mono">
+                      No sessions logged yet. Engage in typing tests on the homepage to start recording!
                     </td>
                   </tr>
                 ) : (
                   history.map((item, idx) => (
-                    <tr key={idx} className="transition-colors hover:bg-black/10">
-                      <td className="py-4 px-6 font-bold text-sm" style={{ color: "var(--main-color)" }}>
+                    <tr key={idx} className="transition-colors hover:bg-white/5">
+                      <td className="py-4 px-6 font-extrabold text-base font-display" style={{ color: "var(--main-color)" }}>
                         {item.wpm}
                       </td>
                       <td className="py-4 px-6 opacity-80">{item.rawWpm}</td>
-                      <td className="py-4 px-6 opacity-80">{item.accuracy}%</td>
+                      <td className="py-4 px-6 opacity-90 font-semibold">{item.accuracy}%</td>
                       <td className="py-4 px-6 opacity-80">{item.consistency}%</td>
                       <td className="py-4 px-6 font-semibold">
-                        <span className="px-2 py-0.5 rounded text-[11px]" style={{ backgroundColor: "var(--bg-color)" }}>
+                        <span className="px-2.5 py-1 rounded-xl text-[11px] bg-black/20 border border-white/5 uppercase">
                           {item.mode} {item.subMode}
                         </span>
                       </td>

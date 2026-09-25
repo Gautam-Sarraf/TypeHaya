@@ -349,7 +349,7 @@ export default function HomePage() {
       <Header />
 
       {/* Main Workspace */}
-      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl mx-auto px-4 py-6">
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {completedStats ? (
           /* Results View */
           <ResultsModal

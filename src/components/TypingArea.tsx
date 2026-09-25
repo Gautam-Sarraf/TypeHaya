@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useState, useLayoutEffect } from "react";
 import { WordState } from "@/lib/engine";
 import { useSettings } from "@/context/SettingsContext";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Zap, Target, Timer, Sparkles } from "lucide-react";
 
 interface TypingAreaProps {
   words: WordState[];
@@ -48,7 +48,7 @@ export function TypingArea({
   const [isFocused, setIsFocused] = useState(true);
 
   // Caret coordinate state
-  const [caretPos, setCaretPos] = useState({ top: 0, left: 0, height: 32, width: 2 });
+  const [caretPos, setCaretPos] = useState({ top: 0, left: 0, height: 36, width: 2.5 });
   const [ghostPos, setGhostPos] = useState<{ top: number; left: number } | null>(null);
 
   // Focus hidden input on click or mount
@@ -96,7 +96,7 @@ export function TypingArea({
     let targetLeft = 0;
     let targetTop = 0;
     let charWidth = 14;
-    let charHeight = 36;
+    let charHeight = 38;
 
     const currentWord = words[currentWordIndex];
     if (!currentWord) return;
@@ -114,10 +114,10 @@ export function TypingArea({
         targetLeft = charRect.left - containerRect.left + scrollLeft;
         targetTop = charRect.top - containerRect.top + scrollTop;
         charWidth = charRect.width || 14;
-        charHeight = charRect.height || 36;
+        charHeight = charRect.height || 38;
       }
     } else {
-      // Past last character of word (at the space boundary)
+      // Past last character of word
       const lastCharEl = currentWordEl.querySelector(
         `[data-char-index="${currentWord.characters.length - 1}"]`
       ) as HTMLElement;
@@ -126,7 +126,7 @@ export function TypingArea({
         targetLeft = lastCharRect.right - containerRect.left + scrollLeft;
         targetTop = lastCharRect.top - containerRect.top + scrollTop;
         charWidth = lastCharRect.width || 14;
-        charHeight = lastCharRect.height || 36;
+        charHeight = lastCharRect.height || 38;
       }
     }
 
@@ -134,12 +134,12 @@ export function TypingArea({
       top: targetTop,
       left: targetLeft,
       height: charHeight,
-      width: settings.caretStyle === "block" || settings.caretStyle === "outline" ? charWidth : 2,
+      width: settings.caretStyle === "block" || settings.caretStyle === "outline" ? charWidth : 3,
     });
 
-    // Auto-scroll viewport if active line exceeds line 2
-    const lineHeight = 42;
-    if (targetTop > lineHeight * 1.5) {
+    // Smooth auto-scroll viewport if active line exceeds line 2
+    const lineHeight = 54;
+    if (targetTop > lineHeight * 2.2) {
       containerRef.current.scrollTop = targetTop - lineHeight;
     } else {
       containerRef.current.scrollTop = 0;
@@ -153,13 +153,12 @@ export function TypingArea({
       return;
     }
 
-    // Find character element corresponding to paceCharIndex
     let accumulated = 0;
     let foundWord = 0;
     let foundChar = 0;
 
     for (let w = 0; w < words.length; w++) {
-      const len = words[w].characters.length + 1; // + space
+      const len = words[w].characters.length + 1;
       if (accumulated + len > paceCharIndex) {
         foundWord = w;
         foundChar = paceCharIndex - accumulated;
@@ -188,50 +187,54 @@ export function TypingArea({
       left: `${caretPos.left}px`,
       top: `${caretPos.top}px`,
       pointerEvents: "none",
-      zIndex: 10,
+      zIndex: 15,
+      transition: "left 0.08s cubic-bezier(0.2, 0.9, 0.3, 1), top 0.08s ease",
     };
 
     switch (settings.caretStyle) {
       case "block":
         return {
           ...base,
-          width: `${caretPos.width || 14}px`,
+          width: `${caretPos.width || 16}px`,
           height: `${caretPos.height}px`,
           backgroundColor: "var(--caret-color)",
-          opacity: 0.75,
-          borderRadius: "2px",
+          opacity: 0.6,
+          borderRadius: "3px",
         };
       case "outline":
         return {
           ...base,
-          width: `${caretPos.width || 14}px`,
+          width: `${caretPos.width || 16}px`,
           height: `${caretPos.height}px`,
           border: "2px solid var(--caret-color)",
-          borderRadius: "2px",
+          borderRadius: "3px",
         };
       case "underline":
         return {
           ...base,
-          width: `${caretPos.width || 14}px`,
-          height: "3px",
+          width: `${caretPos.width || 16}px`,
+          height: "4px",
           top: `${caretPos.top + caretPos.height - 4}px`,
           backgroundColor: "var(--caret-color)",
+          borderRadius: "9999px",
         };
       case "bar":
         return {
           ...base,
-          width: "3px",
+          width: "3.5px",
           height: `${caretPos.height}px`,
           backgroundColor: "var(--caret-color)",
+          borderRadius: "2px",
         };
       case "line":
       default:
         return {
           ...base,
-          width: "2.5px",
+          width: "3.5px",
           height: `${caretPos.height}px`,
           backgroundColor: "var(--caret-color)",
-          borderRadius: "1px",
+          borderRadius: "2px",
+          boxShadow: "0 0 12px var(--caret-color)",
         };
     }
   };
@@ -250,35 +253,98 @@ export function TypingArea({
     }
   };
 
+  // Calculate test progress percentage for time mode
+  const totalSeconds = parseInt(subMode, 10) || 30;
+  const progressPercent =
+    mode === "time"
+      ? Math.max(0, Math.min(100, ((totalSeconds - timeLeft) / totalSeconds) * 100))
+      : 0;
+
   return (
     <div
       onClick={handleFocus}
-      className="relative w-full max-w-5xl mx-auto flex flex-col items-center select-none cursor-text px-4"
+      className="relative w-full max-w-6xl xl:max-w-7xl mx-auto flex flex-col items-center select-none cursor-text px-2 sm:px-6"
     >
-      {/* Live Status Indicators (Timer, WPM, Accuracy) */}
-      <div className="w-full flex items-center justify-between h-8 mb-4 px-2 text-xl font-bold font-mono">
-        <div className="flex items-center gap-6">
+      {/* Telemetry Stage HUD Bar */}
+      <div className="w-full flex items-center justify-between h-10 mb-4 px-3 font-mono">
+        <div className="flex items-center gap-4 sm:gap-6">
+          {/* Dynamic Timer Badge */}
           {settings.showTimer && (
-            <span style={{ color: "var(--main-color)" }}>
-              {mode === "time" ? timeLeft : elapsedSeconds}
-            </span>
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-black/20 border border-white/5 shadow-xs">
+              <Timer className="w-4 h-4 opacity-70" style={{ color: "var(--main-color)" }} />
+              <span
+                className="text-xl font-bold font-display"
+                style={{ color: "var(--main-color)" }}
+              >
+                {mode === "time" ? `${timeLeft}s` : `${elapsedSeconds}s`}
+              </span>
+            </div>
           )}
+
+          {/* Live Speed Dial */}
           {settings.showLiveWpm && status === "running" && (
-            <span className="text-sm font-semibold opacity-70" style={{ color: "var(--sub-color)" }}>
-              {liveWpm} <span className="text-xs">wpm</span>
-            </span>
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-black/20 border border-white/5 animate-in fade-in">
+              <Zap className="w-3.5 h-3.5" style={{ color: "var(--main-color)" }} />
+              <span className="text-base font-bold" style={{ color: "var(--text-color)" }}>
+                {liveWpm}
+              </span>
+              <span className="text-[10px] uppercase font-bold opacity-50" style={{ color: "var(--sub-color)" }}>
+                wpm
+              </span>
+            </div>
           )}
+
+          {/* Live Accuracy Chip */}
           {settings.showLiveAcc && status === "running" && (
-            <span className="text-sm font-semibold opacity-70" style={{ color: "var(--sub-color)" }}>
-              {liveAccuracy}%
-            </span>
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-black/20 border border-white/5 animate-in fade-in">
+              <Target className="w-3.5 h-3.5" style={{ color: "var(--main-color)" }} />
+              <span className="text-base font-bold" style={{ color: "var(--text-color)" }}>
+                {liveAccuracy}%
+              </span>
+            </div>
           )}
+        </div>
+
+        {/* Status Indicator */}
+        <div className="flex items-center gap-2 text-xs opacity-60">
+          <span
+            className={`w-2.5 h-2.5 rounded-full ${
+              status === "running" ? "animate-pulse" : ""
+            }`}
+            style={{
+              backgroundColor: status === "running" ? "var(--main-color)" : "var(--sub-color)",
+              boxShadow: status === "running" ? "0 0 10px var(--main-color)" : "none",
+            }}
+          />
+          <span className="capitalize font-mono text-xs hidden sm:inline">
+            {status === "running" ? "active flight" : "ready"}
+          </span>
         </div>
       </div>
 
-      {/* Main 3-Line Typing Viewport */}
-      <div className="relative w-full overflow-hidden" style={{ minHeight: "140px", maxHeight: "155px" }}>
-        {/* Hidden mobile / accessibility input */}
+      {/* Futuristic Typing Stage Box (Expanded Width & Height) */}
+      <div
+        className="relative w-full p-8 sm:p-10 md:p-12 rounded-3xl hud-glass shadow-2xl transition-all duration-300"
+        style={{
+          minHeight: "240px",
+          maxHeight: "290px",
+        }}
+      >
+        {/* Subtle Progress Line at Top of Stage (Time Mode) */}
+        {mode === "time" && status === "running" && (
+          <div className="absolute top-0 left-0 right-0 h-[3.5px] bg-black/30 overflow-hidden rounded-t-3xl">
+            <div
+              className="h-full transition-all duration-1000 ease-linear"
+              style={{
+                width: `${progressPercent}%`,
+                backgroundColor: "var(--main-color)",
+                boxShadow: "0 0 10px var(--main-color)",
+              }}
+            />
+          </div>
+        )}
+
+        {/* Hidden Accessibility/Mobile Input */}
         <input
           ref={inputRef}
           type="text"
@@ -297,37 +363,40 @@ export function TypingArea({
           className="absolute -top-96 left-0 opacity-0 pointer-events-none"
         />
 
-        {/* Focus Lost Overlay */}
+        {/* Focus Lost Overlay with Futuristic HUD Badge */}
         {!isFocused && status !== "completed" && (
           <div
-            className="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-xs transition-all cursor-pointer rounded-lg"
-            style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
+            className="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer rounded-3xl"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.55)" }}
           >
             <div
-              className="px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg flex items-center gap-2"
+              className="px-8 py-4 rounded-2xl text-sm font-mono font-bold shadow-2xl flex items-center gap-2.5 border animate-pulse"
               style={{
                 backgroundColor: "var(--sub-alt-color)",
+                borderColor: "var(--main-color)",
                 color: "var(--text-color)",
+                boxShadow: "0 0 25px color-mix(in srgb, var(--main-color) 35%, transparent)",
               }}
             >
-              <span>Click here or press any key to focus</span>
+              <Sparkles className="w-5 h-5" style={{ color: "var(--main-color)" }} />
+              <span>Click anywhere or press any key to engage typing arena</span>
             </div>
           </div>
         )}
 
-        {/* Text Container with Carets */}
+        {/* Words & Characters Render Viewport */}
         <div
           ref={containerRef}
-          className="relative w-full flex flex-wrap gap-y-3 leading-relaxed overflow-hidden select-none transition-transform duration-100"
+          className="relative w-full flex flex-wrap gap-y-4 leading-relaxed overflow-hidden select-none font-mono-code tracking-wide"
           style={{
             fontSize: `${settings.fontSize}px`,
-            lineHeight: "42px",
-            maxHeight: "150px",
+            lineHeight: "54px",
+            maxHeight: "216px",
           }}
         >
           {/* Animated Caret */}
           {status !== "completed" && (
-            <div style={getCaretStyles()} className={getCaretAnimClass()} />
+            <div style={getCaretStyles()} className={`${getCaretAnimClass()} laser-caret`} />
           )}
 
           {/* Ghost / Pace Caret */}
@@ -337,26 +406,26 @@ export function TypingArea({
                 position: "absolute",
                 left: `${ghostPos.left}px`,
                 top: `${ghostPos.top}px`,
-                width: "2px",
+                width: "3px",
                 height: `${caretPos.height}px`,
                 backgroundColor: "var(--sub-color)",
-                opacity: 0.45,
-                borderRadius: "1px",
+                opacity: 0.55,
+                borderRadius: "2px",
                 pointerEvents: "none",
                 transition: "left 0.2s ease, top 0.2s ease",
               }}
-              title="Pace Caret"
+              title="Pace Ghost"
             />
           )}
 
-          {/* Render Words & Characters */}
+          {/* Words */}
           {words.map((word, wordIndex) => {
             const isWordActive = wordIndex === currentWordIndex;
             return (
               <div
                 key={wordIndex}
                 data-word-index={wordIndex}
-                className={`inline-flex items-center mr-3 ${
+                className={`inline-flex items-center mr-3.5 sm:mr-5 ${
                   isWordActive ? "word-active" : ""
                 }`}
               >
@@ -368,7 +437,7 @@ export function TypingArea({
                   if (charState.status === "extra") charClass = "char-extra";
                   if (charState.status === "missed") charClass = "char-missed";
 
-                  // In Blind mode, disguise errors as correct until test ends
+                  // Blind Mode
                   if (settings.blindMode && charState.status !== "untyped") {
                     charClass = "char-correct";
                   }
@@ -377,7 +446,7 @@ export function TypingArea({
                     <span
                       key={charIndex}
                       data-char-index={charIndex}
-                      className={`${charClass} ${isCharActive ? "active-char" : ""}`}
+                      className={`${charClass} ${isCharActive ? "active-char font-semibold" : ""}`}
                     >
                       {charState.char}
                     </span>
@@ -389,7 +458,7 @@ export function TypingArea({
         </div>
       </div>
 
-      {/* Quote Attribution (if quote mode) */}
+      {/* Quote Attribution */}
       {mode === "quote" && quoteAuthor && (
         <div
           className="w-full text-right mt-3 text-xs italic font-sans opacity-70"
@@ -400,42 +469,60 @@ export function TypingArea({
         </div>
       )}
 
-      {/* Restart Button with Shortcut Tooltip */}
+      {/* Modern Restart Dock */}
       <div className="mt-8 flex flex-col items-center gap-2">
         <button
           onClick={onRestart}
-          className={`p-3 rounded-xl transition-all duration-200 cursor-pointer group ${
+          className={`p-3.5 rounded-2xl transition-all duration-300 cursor-pointer group shadow-lg ${
             isRestartPrimed
-              ? "scale-125 opacity-100 ring-2 shadow-lg"
-              : "hover:scale-110 active:scale-95 opacity-60 hover:opacity-100"
+              ? "scale-115 ring-2 shadow-2xl neon-glow"
+              : "hover:scale-105 active:scale-95 opacity-70 hover:opacity-100"
           }`}
           style={{
-            backgroundColor: isRestartPrimed ? "var(--sub-alt-color)" : "transparent",
-            color: isRestartPrimed ? "var(--main-color)" : "var(--sub-color)",
-            boxShadow: isRestartPrimed ? "0 0 15px rgba(226, 183, 20, 0.3)" : undefined,
+            backgroundColor: isRestartPrimed
+              ? "var(--main-color)"
+              : "color-mix(in srgb, var(--sub-alt-color) 90%, transparent)",
+            color: isRestartPrimed ? "var(--bg-color)" : "var(--sub-color)",
+            border: isRestartPrimed
+              ? "1px solid var(--main-color)"
+              : "1px solid color-mix(in srgb, var(--sub-color) 20%, transparent)",
           }}
-          title="Restart Test (Tab + Enter or Cmd + Enter)"
+          title="Restart Test (Tab + Enter or Esc)"
         >
           <RotateCcw
             className={`w-5 h-5 ${
-              isRestartPrimed ? "rotate-180 text-[var(--main-color)]" : "group-hover:rotate-180"
+              isRestartPrimed ? "rotate-180" : "group-hover:rotate-180"
             } transition-transform duration-500`}
           />
         </button>
-        <span
-          className={`text-[11px] tracking-wider font-semibold uppercase transition-all duration-200 ${
-            isRestartPrimed ? "opacity-100 font-bold scale-105" : "opacity-40"
-          }`}
-          style={{ color: isRestartPrimed ? "var(--main-color)" : "var(--sub-color)" }}
-        >
-          {isRestartPrimed
-            ? "press enter to restart"
-            : settings.quickRestart === "tabEnter"
-            ? "tab + enter to restart"
-            : settings.quickRestart === "tab"
-            ? "tab to restart"
-            : "esc to restart"}
-        </span>
+
+        {/* Key Shortcut Badges */}
+        <div className="flex items-center gap-1.5 font-mono text-[11px] opacity-50 mt-1">
+          <kbd
+            className="px-1.5 py-0.5 rounded text-[10px] font-bold border"
+            style={{
+              backgroundColor: "var(--sub-alt-color)",
+              borderColor: "color-mix(in srgb, var(--sub-color) 25%, transparent)",
+              color: "var(--text-color)",
+            }}
+          >
+            tab
+          </kbd>
+          <span>+</span>
+          <kbd
+            className="px-1.5 py-0.5 rounded text-[10px] font-bold border"
+            style={{
+              backgroundColor: "var(--sub-alt-color)",
+              borderColor: "color-mix(in srgb, var(--sub-color) 25%, transparent)",
+              color: "var(--text-color)",
+            }}
+          >
+            enter
+          </kbd>
+          <span className="ml-1 uppercase tracking-wider text-[9px] font-semibold">
+            to restart
+          </span>
+        </div>
       </div>
     </div>
   );

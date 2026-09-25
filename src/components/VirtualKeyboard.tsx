@@ -44,7 +44,7 @@ export function VirtualKeyboard() {
   const getKeyWidth = (key: string) => {
     switch (key) {
       case "space":
-        return "w-72 sm:w-80";
+        return "w-64 sm:w-72";
       case "backspace":
       case "enter":
         return "w-16 sm:w-20";
@@ -54,17 +54,16 @@ export function VirtualKeyboard() {
       case "shift":
         return "w-16 sm:w-22";
       default:
-        return "w-8 sm:w-10";
+        return "w-8 sm:w-9";
     }
   };
 
   return (
     <div
-      className="inline-flex flex-col items-center gap-1.5 p-3 rounded-2xl shadow-inner select-none transition-all my-4"
-      style={{ backgroundColor: "var(--sub-alt-color)" }}
+      className="inline-flex flex-col items-center gap-1.5 p-3.5 rounded-3xl hud-glass shadow-2xl select-none transition-all my-4 border border-white/5"
     >
       {KEYBOARD_ROWS.map((row, rowIndex) => (
-        <div key={rowIndex} className="flex items-center gap-1.5">
+        <div key={rowIndex} className="flex items-center gap-1 sm:gap-1.5">
           {row.map((key, keyIndex) => {
             const isActive = activeKeys.has(key);
             return (
@@ -72,17 +71,20 @@ export function VirtualKeyboard() {
                 key={keyIndex}
                 className={`h-8 sm:h-9 ${getKeyWidth(
                   key
-                )} rounded-lg flex items-center justify-center font-mono text-[11px] sm:text-xs font-semibold transition-all duration-75 shadow-xs ${
-                  isActive ? "scale-95 shadow-inner" : ""
+                )} rounded-xl flex items-center justify-center font-mono text-[10px] sm:text-xs font-semibold transition-all duration-75 select-none ${
+                  isActive
+                    ? "scale-95 shadow-inner"
+                    : "shadow-md hover:scale-[1.02]"
                 }`}
                 style={{
                   backgroundColor: isActive
                     ? "var(--main-color)"
-                    : "var(--bg-color)",
+                    : "color-mix(in srgb, var(--sub-alt-color) 120%, white 5%)",
                   color: isActive ? "var(--bg-color)" : "var(--text-color)",
-                  borderBottom: isActive
-                    ? "1px solid var(--main-color)"
-                    : "2px solid rgba(0,0,0,0.2)",
+                  boxShadow: isActive
+                    ? "0 0 12px var(--main-color), inset 0 2px 4px rgba(0,0,0,0.3)"
+                    : "0 3px 0 color-mix(in srgb, var(--bg-color) 80%, black), 0 4px 6px rgba(0,0,0,0.2)",
+                  transform: isActive ? "translateY(2px)" : "translateY(0)",
                 }}
               >
                 {key}

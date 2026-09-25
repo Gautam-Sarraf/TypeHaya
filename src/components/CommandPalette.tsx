@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useSettings } from "@/context/SettingsContext";
-import { Search, Palette, Volume2, Clock, Type, X } from "lucide-react";
+import { Search, Palette, Volume2, Clock, Type, X, Sparkles } from "lucide-react";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -44,7 +44,7 @@ export function CommandPalette({ isOpen, onClose, onSelectMode }: CommandPalette
       category: string;
       label: string;
       action: () => void;
-      icon: React.ComponentType<{ className?: string }>;
+      icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
       active?: boolean;
     }> = [];
 
@@ -52,8 +52,8 @@ export function CommandPalette({ isOpen, onClose, onSelectMode }: CommandPalette
     themes.forEach((t) => {
       list.push({
         id: `theme-${t.id}`,
-        category: "Themes",
-        label: `Theme: ${t.name}`,
+        category: "Theme Colorways",
+        label: `${t.name}`,
         action: () => {
           setThemeId(t.id);
           onClose();
@@ -65,16 +65,16 @@ export function CommandPalette({ isOpen, onClose, onSelectMode }: CommandPalette
 
     // Sound Presets
     const sounds: Array<{ id: typeof settings.soundPreset; label: string }> = [
-      { id: "off", label: "Sound: Off" },
+      { id: "off", label: "Sound: Off (Mute)" },
       { id: "cherry_blue", label: "Sound: Cherry MX Blue (Clicky)" },
       { id: "cherry_brown", label: "Sound: Cherry MX Brown (Tactile)" },
       { id: "pop", label: "Sound: Bubble Pop" },
-      { id: "typewriter", label: "Sound: Typewriter" },
+      { id: "typewriter", label: "Sound: Vintage Typewriter" },
     ];
     sounds.forEach((s) => {
       list.push({
         id: `sound-${s.id}`,
-        category: "Sounds",
+        category: "Acoustics",
         label: s.label,
         action: () => {
           updateSetting("soundPreset", s.id);
@@ -89,7 +89,7 @@ export function CommandPalette({ isOpen, onClose, onSelectMode }: CommandPalette
     if (onSelectMode) {
       list.push({
         id: "mode-time",
-        category: "Modes",
+        category: "Test Modes",
         label: "Switch to Time Mode",
         action: () => {
           onSelectMode("time");
@@ -99,7 +99,7 @@ export function CommandPalette({ isOpen, onClose, onSelectMode }: CommandPalette
       });
       list.push({
         id: "mode-words",
-        category: "Modes",
+        category: "Test Modes",
         label: "Switch to Words Mode",
         action: () => {
           onSelectMode("words");
@@ -111,7 +111,8 @@ export function CommandPalette({ isOpen, onClose, onSelectMode }: CommandPalette
 
     if (!query) return list;
     return list.filter((item) =>
-      item.label.toLowerCase().includes(query.toLowerCase())
+      item.label.toLowerCase().includes(query.toLowerCase()) ||
+      item.category.toLowerCase().includes(query.toLowerCase())
     );
   }, [themes, themeId, setThemeId, settings.soundPreset, updateSetting, onSelectMode, query, onClose]);
 
@@ -119,37 +120,31 @@ export function CommandPalette({ isOpen, onClose, onSelectMode }: CommandPalette
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 backdrop-blur-xs transition-all animate-in fade-in duration-150"
-      style={{ backgroundColor: "rgba(0, 0, 0, 0.65)" }}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 px-4 backdrop-blur-md transition-all animate-in fade-in duration-200"
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden border flex flex-col max-h-[500px]"
-        style={{
-          backgroundColor: "var(--bg-color)",
-          borderColor: "var(--sub-alt-color)",
-          color: "var(--text-color)",
-        }}
+        className="w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border flex flex-col max-h-[520px] hud-glass border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Header */}
         <div
-          className="flex items-center gap-3 px-4 py-3.5 border-b"
-          style={{ borderColor: "var(--sub-alt-color)" }}
+          className="flex items-center gap-3 px-5 py-4 border-b border-white/10 bg-black/20"
         >
-          <Search className="w-5 h-5 opacity-60" style={{ color: "var(--sub-color)" }} />
+          <Search className="w-5 h-5 opacity-60" style={{ color: "var(--main-color)" }} />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type a command or search themes..."
+            placeholder="Type a command or search themes, sounds..."
             className="flex-1 bg-transparent border-none outline-none font-mono text-sm placeholder:opacity-40"
             style={{ color: "var(--text-color)" }}
           />
           <button
             onClick={onClose}
-            className="p-1 rounded-lg opacity-60 hover:opacity-100 cursor-pointer"
+            className="p-1 rounded-xl opacity-60 hover:opacity-100 cursor-pointer"
             style={{ color: "var(--sub-color)" }}
           >
             <X className="w-4 h-4" />
@@ -159,7 +154,7 @@ export function CommandPalette({ isOpen, onClose, onSelectMode }: CommandPalette
         {/* Command Items List */}
         <div className="overflow-y-auto p-2 flex flex-col gap-1 max-h-96 font-mono text-xs">
           {items.length === 0 ? (
-            <div className="p-8 text-center opacity-50 font-mono text-xs" style={{ color: "var(--sub-color)" }}>
+            <div className="p-10 text-center opacity-50 font-mono text-xs" style={{ color: "var(--sub-color)" }}>
               No commands found matching &quot;{query}&quot;
             </div>
           ) : (
@@ -169,19 +164,26 @@ export function CommandPalette({ isOpen, onClose, onSelectMode }: CommandPalette
                 <button
                   key={item.id}
                   onClick={item.action}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors cursor-pointer ${
-                    item.active ? "font-bold" : "hover:bg-black/10"
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-left transition-all cursor-pointer ${
+                    item.active
+                      ? "font-bold shadow-xs scale-[1.01]"
+                      : "hover:bg-white/5 opacity-80 hover:opacity-100"
                   }`}
                   style={{
-                    backgroundColor: item.active ? "var(--sub-alt-color)" : "transparent",
+                    backgroundColor: item.active
+                      ? "color-mix(in srgb, var(--main-color) 15%, transparent)"
+                      : "transparent",
                     color: item.active ? "var(--main-color)" : "var(--text-color)",
+                    border: item.active
+                      ? "1px solid color-mix(in srgb, var(--main-color) 30%, transparent)"
+                      : "1px solid transparent",
                   }}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className="w-4 h-4 opacity-70" />
-                    <span>{item.label}</span>
+                    <Icon className="w-4 h-4" style={{ color: item.active ? "var(--main-color)" : "var(--sub-color)" }} />
+                    <span className="font-semibold">{item.label}</span>
                   </div>
-                  <span className="text-[10px] uppercase font-bold opacity-40" style={{ color: "var(--sub-color)" }}>
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-lg bg-black/20 border border-white/5 opacity-60">
                     {item.category}
                   </span>
                 </button>
